@@ -7,11 +7,11 @@ from typing import Optional
 
 app = FastAPI()
 
-# Configuración de PostgreSQL (¡Ajusta estos valores!)
+# Configuración de PostgreSQL
 DB_CONFIG = {
     "host": "localhost",
     "database": "ki09",
-    "user": "postgres",  # Ej: "postgres"
+    "user": "postgres",  #
     "password": "cassa",
     "port": "5432",
     "cursor_factory": RealDictCursor  # Para obtener resultados como diccionarios
