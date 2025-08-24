@@ -1,0 +1,14 @@
+# 🐍 Archivos generados por Python
+__pycache__/
+*.py[cod]
+
+# 📦 Entornos virtuales (evita subir dependencias locales)
+venv/
+env/
+ENV/
+.venv/
+
+# 🧪 Archivos de pruebas y cobertura
+*.cover
+coverage.xml
+htmlcov/
