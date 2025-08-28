@@ -13,6 +13,8 @@ print(f"Directorio raíz agregado: {project_root}")
 
 from fastapi import FastAPI
 from interfaces.api.controllers.categoria_controller import router as categorias_router
+from interfaces.api.controllers.producto_controller import router as productos_router
+
 
 app = FastAPI(
     title="API de Categorías",
@@ -22,7 +24,7 @@ app = FastAPI(
 
 # Incluir rutas
 app.include_router(categorias_router)
-
+app.include_router(productos_router)
 @app.get("/")
 async def root():
     return {"mensaje": "API de Categorías funcionando correctamente"}

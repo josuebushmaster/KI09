@@ -10,11 +10,11 @@ project_root = current_file.parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 from fastapi import APIRouter, HTTPException, status
-from application.use_cases.crear_categoria import CrearCategoriaUseCase
-from application.use_cases.obtener_categoria import ObtenerCategoriaUseCase
-from application.use_cases.listar_categorias import ListarCategoriasUseCase
-from application.use_cases.actualizar_categoria import ActualizarCategoriaUseCase
-from application.use_cases.eliminar_categoria import EliminarCategoriaUseCase
+from application.use_cases.categoria_cases.crear_categoria import CrearCategoriaUseCase
+from application.use_cases.categoria_cases.obtener_categoria import ObtenerCategoriaUseCase
+from application.use_cases.categoria_cases.listar_categorias import ListarCategoriasUseCase
+from application.use_cases.categoria_cases.actualizar_categoria import ActualizarCategoriaUseCase
+from application.use_cases.categoria_cases.eliminar_categoria import EliminarCategoriaUseCase
 from infrastructure.repositories.postgres_categoria_repository import PostgresCategoriaRepository
 from interfaces.api.dtos.categoria_dto import CategoriaCreateDTO, CategoriaUpdateDTO, CategoriaResponseDTO
 
