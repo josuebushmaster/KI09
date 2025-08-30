@@ -36,7 +36,7 @@ app.include_router(clientes_router)
 app.include_router(ordenes_router)
 @app.get("/")
 async def root():
-    return {"mensaje": "API de Categorías funcionando correctamente"}
+    return {"mensaje": "API de KI09 funcionando correctamente"}
 
 
 @app.on_event("startup")
