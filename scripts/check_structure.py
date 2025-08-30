@@ -2,7 +2,9 @@
 import os
 
 def check_structure():
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    # directorio del script y raíz del proyecto (parent de scripts)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.path.dirname(script_dir)
     required_dirs = [
         'domain',
         'domain/entities',
@@ -36,23 +38,25 @@ def check_structure():
         'interfaces/api/dtos/categoria_dto.py'
     ]
     
-    print("Verificando estructura de carpetas...")
-    
+    print(f"Verificando estructura de carpetas (base: {base_dir})...")
+
     for dir_path in required_dirs:
         full_path = os.path.join(base_dir, dir_path)
+        rel = os.path.relpath(full_path, base_dir)
         if os.path.exists(full_path):
-            print(f"✓ Carpeta {dir_path} existe")
+            print(f"✓ Carpeta {rel} existe")
         else:
-            print(f"✗ Falta carpeta: {dir_path}")
+            print(f"✗ Falta carpeta: {rel}")
     
-    print("\nVerificando archivos __init__.py...")
-    
+    print("\nVerificando archivos __init__.py y archivos requeridos...")
+
     for file_path in required_files:
         full_path = os.path.join(base_dir, file_path)
+        rel = os.path.relpath(full_path, base_dir)
         if os.path.exists(full_path):
-            print(f"✓ Archivo {file_path} existe")
+            print(f"✓ Archivo {rel} existe")
         else:
-            print(f"✗ Falta archivo: {file_path}")
+            print(f"✗ Falta archivo: {rel}")
 
 if __name__ == "__main__":
     check_structure()
