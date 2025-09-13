@@ -9,24 +9,32 @@ class PostgresProductoRepository(ProductoRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
             query = """
-                INSERT INTO productos (nombre_producto, precio, id_categoria)
-                VALUES (%s, %s, %s)
-                RETURNING id_producto, nombre_producto, precio, id_categoria;
+                INSERT INTO productos (nombre_producto, precio, costo, id_categoria, descripcion, stock, imagen_url)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                RETURNING id_producto, nombre_producto, precio, costo, id_categoria, descripcion, stock, imagen_url;
             """
-            cursor.execute(query, (producto.nombre_producto, producto.precio, producto.id_categoria))
-            
+            cursor.execute(query, (
+                producto.nombre_producto,
+                producto.precio,
+                producto.costo,
+                producto.id_categoria,
+                producto.descripcion,
+                producto.stock,
+                producto.imagen_url
+            ))
             result = cursor.fetchone()
             conn.commit()
-            
             return Producto(
                 id_producto=result['id_producto'],
                 nombre_producto=result['nombre_producto'],
                 precio=result['precio'],
-                id_categoria=result['id_categoria']
+                costo=result['costo'],
+                id_categoria=result['id_categoria'],
+                descripcion=result['descripcion'],
+                stock=result['stock'],
+                imagen_url=result['imagen_url']
             )
-            
         except Exception as e:
             if conn:
                 conn.rollback()
@@ -40,21 +48,21 @@ class PostgresProductoRepository(ProductoRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
             query = "SELECT * FROM productos WHERE id_producto = %s;"
             cursor.execute(query, (id_producto,))
-            
             result = cursor.fetchone()
             if not result:
                 return None
-                
             return Producto(
                 id_producto=result['id_producto'],
                 nombre_producto=result['nombre_producto'],
                 precio=result['precio'],
-                id_categoria=result['id_categoria']
+                costo=result['costo'],
+                id_categoria=result['id_categoria'],
+                descripcion=result['descripcion'],
+                stock=result['stock'],
+                imagen_url=result['imagen_url']
             )
-            
         except Exception as e:
             raise e
         finally:
@@ -66,20 +74,21 @@ class PostgresProductoRepository(ProductoRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
             query = "SELECT * FROM productos ORDER BY id_producto;"
             cursor.execute(query)
-            
             results = cursor.fetchall()
             return [
                 Producto(
                     id_producto=row['id_producto'],
                     nombre_producto=row['nombre_producto'],
                     precio=row['precio'],
-                    id_categoria=row['id_categoria']
+                    costo=row['costo'],
+                    id_categoria=row['id_categoria'],
+                    descripcion=row['descripcion'],
+                    stock=row['stock'],
+                    imagen_url=row['imagen_url']
                 ) for row in results
             ]
-            
         except Exception as e:
             raise e
         finally:
@@ -91,33 +100,36 @@ class PostgresProductoRepository(ProductoRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
             query = """
                 UPDATE productos
-                SET nombre_producto = %s, precio = %s, id_categoria = %s
+                SET nombre_producto = %s, precio = %s, costo = %s, id_categoria = %s, descripcion = %s, stock = %s, imagen_url = %s
                 WHERE id_producto = %s
                 RETURNING *;
             """
             cursor.execute(query, (
                 producto.nombre_producto,
                 producto.precio,
+                producto.costo,
                 producto.id_categoria,
+                producto.descripcion,
+                producto.stock,
+                producto.imagen_url,
                 id_producto
             ))
-            
             result = cursor.fetchone()
             conn.commit()
-            
             if not result:
                 return None
-                
             return Producto(
                 id_producto=result['id_producto'],
                 nombre_producto=result['nombre_producto'],
                 precio=result['precio'],
-                id_categoria=result['id_categoria']
+                costo=result['costo'],
+                id_categoria=result['id_categoria'],
+                descripcion=result['descripcion'],
+                stock=result['stock'],
+                imagen_url=result['imagen_url']
             )
-            
         except Exception as e:
             if conn:
                 conn.rollback()

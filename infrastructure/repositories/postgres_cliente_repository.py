@@ -14,11 +14,18 @@ class PostgresClienteRepository(ClienteRepository):
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
             query = """
-                INSERT INTO clientes (nombre, apellido, edad)
-                VALUES (%s, %s, %s)
-                RETURNING id_cliente, nombre, apellido, edad;
+                INSERT INTO clientes (nombre, apellido, edad, email, telefono, direccion)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id_cliente, nombre, apellido, edad, email, telefono, direccion;
             """
-            cursor.execute(query, (cliente.nombre, cliente.apellido, cliente.edad))
+            cursor.execute(query, (
+                cliente.nombre,
+                cliente.apellido,
+                cliente.edad,
+                cliente.email,
+                cliente.telefono,
+                cliente.direccion
+            ))
 
             result = cursor.fetchone()
             conn.commit()
@@ -27,7 +34,10 @@ class PostgresClienteRepository(ClienteRepository):
                 id_cliente=result['id_cliente'],
                 nombre=result['nombre'],
                 apellido=result['apellido'],
-                edad=result['edad']
+                edad=result['edad'],
+                email=result['email'],
+                telefono=result['telefono'],
+                direccion=result['direccion']
             )
 
         except Exception as e:
@@ -55,7 +65,10 @@ class PostgresClienteRepository(ClienteRepository):
                 id_cliente=result['id_cliente'],
                 nombre=result['nombre'],
                 apellido=result['apellido'],
-                edad=result['edad']
+                edad=result['edad'],
+                email=result['email'],
+                telefono=result['telefono'],
+                direccion=result['direccion']
             )
 
         except Exception as e:
@@ -79,7 +92,10 @@ class PostgresClienteRepository(ClienteRepository):
                     id_cliente=row['id_cliente'],
                     nombre=row['nombre'],
                     apellido=row['apellido'],
-                    edad=row['edad']
+                    edad=row['edad'],
+                    email=row['email'],
+                    telefono=row['telefono'],
+                    direccion=row['direccion']
                 ) for row in results
             ]
 
@@ -97,7 +113,7 @@ class PostgresClienteRepository(ClienteRepository):
 
             query = """
                 UPDATE clientes
-                SET nombre = %s, apellido = %s, edad = %s
+                SET nombre = %s, apellido = %s, edad = %s, email = %s, telefono = %s, direccion = %s
                 WHERE id_cliente = %s
                 RETURNING *;
             """
@@ -105,6 +121,9 @@ class PostgresClienteRepository(ClienteRepository):
                 cliente.nombre,
                 cliente.apellido,
                 cliente.edad,
+                cliente.email,
+                cliente.telefono,
+                cliente.direccion,
                 id_cliente
             ))
 
@@ -118,7 +137,10 @@ class PostgresClienteRepository(ClienteRepository):
                 id_cliente=result['id_cliente'],
                 nombre=result['nombre'],
                 apellido=result['apellido'],
-                edad=result['edad']
+                edad=result['edad'],
+                email=result['email'],
+                telefono=result['telefono'],
+                direccion=result['direccion']
             )
 
         except Exception as e:

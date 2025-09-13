@@ -19,3 +19,4 @@ infrastructure/data/*
 !infrastructure/data/.gitkeep
 
 .idea/
+infrastructure/sync/sync.log

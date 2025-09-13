@@ -20,6 +20,8 @@ from interfaces.api.controllers.categoria_controller import router as categorias
 from interfaces.api.controllers.producto_controller import router as productos_router
 from interfaces.api.controllers.cliente_controller import router as clientes_router
 from interfaces.api.controllers.orden_controller import router as ordenes_router
+from interfaces.api.controllers.venta_controller import router as ventas_router
+from interfaces.api.controllers.orden_producto_controller import router as orden_producto_router
 from infrastructure.database.postgres_connection import get_db_connection
 
 
@@ -34,6 +36,8 @@ app.include_router(categorias_router)
 app.include_router(productos_router)
 app.include_router(clientes_router)
 app.include_router(ordenes_router)
+app.include_router(ventas_router)
+app.include_router(orden_producto_router)
 @app.get("/")
 async def root():
     return {"mensaje": "API de KI09 funcionando correctamente"}

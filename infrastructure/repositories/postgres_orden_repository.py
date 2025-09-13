@@ -23,11 +23,24 @@ class PostgresOrdenRepository(OrdenRepository):
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
             query = """
-                INSERT INTO orden (id_cliente, fecha_orden, estado_orden)
-                VALUES (%s, %s, %s)
-                RETURNING id_orden, id_cliente, fecha_orden, estado_orden;
+                INSERT INTO orden (
+                    id_cliente, fecha_orden, estado_orden, direccion_envio, total_orden, ciudad_envio, codigo_postal_envio, pais_envio, metodo_envio, costo_envio, estado_envio
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id_orden, id_cliente, fecha_orden, estado_orden, direccion_envio, total_orden, ciudad_envio, codigo_postal_envio, pais_envio, metodo_envio, costo_envio, estado_envio;
             """
-            cursor.execute(query, (orden.id_cliente, orden.fecha_orden, orden.estado_orden))
+            cursor.execute(query, (
+                orden.id_cliente,
+                orden.fecha_orden,
+                orden.estado_orden,
+                orden.direccion_envio,
+                orden.total_orden,
+                orden.ciudad_envio,
+                orden.codigo_postal_envio,
+                orden.pais_envio,
+                orden.metodo_envio,
+                orden.costo_envio,
+                orden.estado_envio
+            ))
 
             result = cursor.fetchone()
             conn.commit()
@@ -36,7 +49,15 @@ class PostgresOrdenRepository(OrdenRepository):
                 id_orden=result['id_orden'],
                 id_cliente=result['id_cliente'],
                 fecha_orden=result['fecha_orden'],
-                estado_orden=self._map_estado_db(result['estado_orden'])
+                estado_orden=self._map_estado_db(result['estado_orden']),
+                direccion_envio=result['direccion_envio'],
+                total_orden=result['total_orden'],
+                ciudad_envio=result['ciudad_envio'],
+                codigo_postal_envio=result['codigo_postal_envio'],
+                pais_envio=result['pais_envio'],
+                metodo_envio=result['metodo_envio'],
+                costo_envio=result['costo_envio'],
+                estado_envio=result['estado_envio']
             )
 
         except Exception as e:
@@ -64,7 +85,15 @@ class PostgresOrdenRepository(OrdenRepository):
                 id_orden=result['id_orden'],
                 id_cliente=result['id_cliente'],
                 fecha_orden=result['fecha_orden'],
-                estado_orden=self._map_estado_db(result['estado_orden'])
+                estado_orden=self._map_estado_db(result['estado_orden']),
+                direccion_envio=result['direccion_envio'],
+                total_orden=result['total_orden'],
+                ciudad_envio=result['ciudad_envio'],
+                codigo_postal_envio=result['codigo_postal_envio'],
+                pais_envio=result['pais_envio'],
+                metodo_envio=result['metodo_envio'],
+                costo_envio=result['costo_envio'],
+                estado_envio=result['estado_envio']
             )
 
         except Exception as e:
@@ -88,7 +117,15 @@ class PostgresOrdenRepository(OrdenRepository):
                     id_orden=row['id_orden'],
                     id_cliente=row['id_cliente'],
                     fecha_orden=row['fecha_orden'],
-                    estado_orden=self._map_estado_db(row['estado_orden'])
+                    estado_orden=self._map_estado_db(row['estado_orden']),
+                    direccion_envio=row['direccion_envio'],
+                    total_orden=row['total_orden'],
+                    ciudad_envio=row['ciudad_envio'],
+                    codigo_postal_envio=row['codigo_postal_envio'],
+                    pais_envio=row['pais_envio'],
+                    metodo_envio=row['metodo_envio'],
+                    costo_envio=row['costo_envio'],
+                    estado_envio=row['estado_envio']
                 ) for row in results
             ]
 
@@ -113,7 +150,15 @@ class PostgresOrdenRepository(OrdenRepository):
                     id_orden=row['id_orden'],
                     id_cliente=row['id_cliente'],
                     fecha_orden=row['fecha_orden'],
-                    estado_orden=self._map_estado_db(row['estado_orden'])
+                    estado_orden=self._map_estado_db(row['estado_orden']),
+                    direccion_envio=row['direccion_envio'],
+                    total_orden=row['total_orden'],
+                    ciudad_envio=row['ciudad_envio'],
+                    codigo_postal_envio=row['codigo_postal_envio'],
+                    pais_envio=row['pais_envio'],
+                    metodo_envio=row['metodo_envio'],
+                    costo_envio=row['costo_envio'],
+                    estado_envio=row['estado_envio']
                 ) for row in results
             ]
 
@@ -138,7 +183,15 @@ class PostgresOrdenRepository(OrdenRepository):
                     id_orden=row['id_orden'],
                     id_cliente=row['id_cliente'],
                     fecha_orden=row['fecha_orden'],
-                   estado_orden=self._map_estado_db(row['estado_orden'])
+                    estado_orden=self._map_estado_db(row['estado_orden']),
+                    direccion_envio=row['direccion_envio'],
+                    total_orden=row['total_orden'],
+                    ciudad_envio=row['ciudad_envio'],
+                    codigo_postal_envio=row['codigo_postal_envio'],
+                    pais_envio=row['pais_envio'],
+                    metodo_envio=row['metodo_envio'],
+                    costo_envio=row['costo_envio'],
+                    estado_envio=row['estado_envio']
                 ) for row in results
             ]
 
@@ -154,16 +207,45 @@ class PostgresOrdenRepository(OrdenRepository):
             conn = get_db_connection()
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+            # Obtener la orden actual
+            cursor.execute("SELECT * FROM orden WHERE id_orden = %s;", (id_orden,))
+            actual = cursor.fetchone()
+            if not actual:
+                return None
+
+            # Merge: usar el valor nuevo si no es None, si es None usar el actual
+            merged = {
+                'id_cliente': orden.id_cliente if orden.id_cliente is not None else actual['id_cliente'],
+                'fecha_orden': orden.fecha_orden if orden.fecha_orden is not None else actual['fecha_orden'],
+                'estado_orden': orden.estado_orden if orden.estado_orden is not None else actual['estado_orden'],
+                'direccion_envio': orden.direccion_envio if orden.direccion_envio is not None else actual['direccion_envio'],
+                'total_orden': orden.total_orden if orden.total_orden is not None else actual['total_orden'],
+                'ciudad_envio': orden.ciudad_envio if orden.ciudad_envio is not None else actual['ciudad_envio'],
+                'codigo_postal_envio': orden.codigo_postal_envio if orden.codigo_postal_envio is not None else actual['codigo_postal_envio'],
+                'pais_envio': orden.pais_envio if orden.pais_envio is not None else actual['pais_envio'],
+                'metodo_envio': orden.metodo_envio if orden.metodo_envio is not None else actual['metodo_envio'],
+                'costo_envio': orden.costo_envio if orden.costo_envio is not None else actual['costo_envio'],
+                'estado_envio': orden.estado_envio if orden.estado_envio is not None else actual['estado_envio'],
+            }
+
             query = """
                 UPDATE orden
-                SET id_cliente = %s, fecha_orden = %s, estado_orden = %s
+                SET id_cliente = %s, fecha_orden = %s, estado_orden = %s, direccion_envio = %s, total_orden = %s, ciudad_envio = %s, codigo_postal_envio = %s, pais_envio = %s, metodo_envio = %s, costo_envio = %s, estado_envio = %s
                 WHERE id_orden = %s
                 RETURNING *;
             """
             cursor.execute(query, (
-                orden.id_cliente,
-                orden.fecha_orden,
-                orden.estado_orden,
+                merged['id_cliente'],
+                merged['fecha_orden'],
+                merged['estado_orden'],
+                merged['direccion_envio'],
+                merged['total_orden'],
+                merged['ciudad_envio'],
+                merged['codigo_postal_envio'],
+                merged['pais_envio'],
+                merged['metodo_envio'],
+                merged['costo_envio'],
+                merged['estado_envio'],
                 id_orden
             ))
 
@@ -177,7 +259,15 @@ class PostgresOrdenRepository(OrdenRepository):
                 id_orden=result['id_orden'],
                 id_cliente=result['id_cliente'],
                 fecha_orden=result['fecha_orden'],
-                estado_orden=self._map_estado_db(result['estado_orden'])
+                estado_orden=self._map_estado_db(result['estado_orden']),
+                direccion_envio=result['direccion_envio'],
+                total_orden=result['total_orden'],
+                ciudad_envio=result['ciudad_envio'],
+                codigo_postal_envio=result['codigo_postal_envio'],
+                pais_envio=result['pais_envio'],
+                metodo_envio=result['metodo_envio'],
+                costo_envio=result['costo_envio'],
+                estado_envio=result['estado_envio']
             )
 
         except Exception as e:
@@ -194,8 +284,9 @@ class PostgresOrdenRepository(OrdenRepository):
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            query = "DELETE FROM orden WHERE id_orden = %s;"
-            cursor.execute(query, (id_orden,))
+            # Borrado lógico: estado_orden = 3 (cancelada)
+            query = "UPDATE orden SET estado_orden = %s WHERE id_orden = %s;"
+            cursor.execute(query, (3, id_orden))
 
             conn.commit()
             return cursor.rowcount > 0

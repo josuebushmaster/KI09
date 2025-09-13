@@ -29,7 +29,14 @@ cliente_repository = PostgresClienteRepository()
 async def crear_cliente(cliente_dto: ClienteCreateDTO):
     try:
         use_case = CrearClienteUseCase(cliente_repository)
-        cliente = use_case.execute(cliente_dto.nombre, cliente_dto.apellido, cliente_dto.edad)
+        cliente = use_case.execute(
+            cliente_dto.nombre,
+            cliente_dto.apellido,
+            cliente_dto.edad,
+            cliente_dto.email,
+            cliente_dto.telefono,
+            cliente_dto.direccion
+        )
         return cliente
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
@@ -53,20 +60,24 @@ async def listar_clientes():
 @router.put("/{id_cliente}", response_model=ClienteResponseDTO)
 async def actualizar_cliente(id_cliente: int, cliente_dto: ClienteUpdateDTO):
     # Validar al menos un campo
-    if cliente_dto.nombre is None and cliente_dto.apellido is None and cliente_dto.edad is None:
+    if all(
+        getattr(cliente_dto, field) is None for field in [
+            "nombre", "apellido", "edad", "email", "telefono", "direccion"
+        ]
+    ):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Se debe proporcionar al menos un campo para actualizar")
-
     use_case = ActualizarClienteUseCase(cliente_repository)
     cliente_actualizado = use_case.execute(
         id_cliente,
         cliente_dto.nombre or "",
         cliente_dto.apellido or "",
-        cliente_dto.edad if cliente_dto.edad is not None else 0
+        cliente_dto.edad if cliente_dto.edad is not None else 0,
+        cliente_dto.email or "",
+        cliente_dto.telefono or "",
+        cliente_dto.direccion or ""
     )
-
     if not cliente_actualizado:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
-
     return cliente_actualizado
 
 

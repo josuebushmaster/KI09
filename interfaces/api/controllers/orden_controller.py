@@ -32,7 +32,19 @@ orden_repository = PostgresOrdenRepository()
 async def crear_orden(orden_dto: OrdenCreateDTO):
     try:
         use_case = CrearOrdenUseCase(orden_repository)
-        orden = use_case.execute(orden_dto.id_cliente, orden_dto.fecha_orden, orden_dto.estado_orden)
+        orden = use_case.execute(
+            orden_dto.id_cliente,
+            orden_dto.fecha_orden,
+            orden_dto.estado_orden,
+            orden_dto.direccion_envio,
+            orden_dto.total_orden,
+            orden_dto.ciudad_envio,
+            orden_dto.codigo_postal_envio,
+            orden_dto.pais_envio,
+            orden_dto.metodo_envio,
+            orden_dto.costo_envio,
+            orden_dto.estado_envio
+        )
         return orden
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
@@ -72,20 +84,29 @@ async def reportes_ordenes(fecha_inicio: datetime, fecha_fin: datetime):
 @router.put("/{id_orden}", response_model=OrdenResponseDTO)
 async def actualizar_orden(id_orden: int, orden_dto: OrdenUpdateDTO):
     # Validar al menos un campo
-    if orden_dto.id_cliente is None and orden_dto.fecha_orden is None and orden_dto.estado_orden is None:
+    if all(
+        getattr(orden_dto, field) is None for field in [
+            "id_cliente", "fecha_orden", "estado_orden", "direccion_envio", "total_orden", "ciudad_envio", "codigo_postal_envio", "pais_envio", "metodo_envio", "costo_envio", "estado_envio"
+        ]
+    ):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Se debe proporcionar al menos un campo para actualizar")
-
     use_case = ActualizarOrdenUseCase(orden_repository)
     orden_actualizada = use_case.execute(
         id_orden,
         id_cliente=orden_dto.id_cliente,
         fecha_orden=orden_dto.fecha_orden,
-        estado_orden=orden_dto.estado_orden
+        estado_orden=orden_dto.estado_orden,
+        direccion_envio=orden_dto.direccion_envio,
+        total_orden=orden_dto.total_orden,
+        ciudad_envio=orden_dto.ciudad_envio,
+        codigo_postal_envio=orden_dto.codigo_postal_envio,
+        pais_envio=orden_dto.pais_envio,
+        metodo_envio=orden_dto.metodo_envio,
+        costo_envio=orden_dto.costo_envio,
+        estado_envio=orden_dto.estado_envio
     )
-
     if not orden_actualizada:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Orden no encontrada")
-
     return orden_actualizada
 
 
@@ -95,4 +116,4 @@ async def eliminar_orden(id_orden: int):
     eliminado = use_case.execute(id_orden)
     if not eliminado:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Orden no encontrada")
-    return {"mensaje": "Orden eliminada exitosamente"}
+    return {"mensaje": "Orden cancelada exitosamente (borrado lógico)"}

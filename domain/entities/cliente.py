@@ -7,3 +7,6 @@ class Cliente:
     nombre: str = ""
     apellido: str = ""
     edad: int = 0
+    email: str = ""
+    telefono: str = ""
+    direccion: str = ""
