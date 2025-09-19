@@ -20,3 +20,6 @@ infrastructure/data/*
 
 .idea/
 infrastructure/sync/sync.log
+
+docs/
+
