@@ -1,3 +1,4 @@
+
 import os
 import requests
 from dotenv import load_dotenv
@@ -15,30 +16,19 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-prompt = """Analiza la siguiente información financiera:
-Enero: ingresos 1000, gastos 500
-Febrero: ingresos 1200, gastos 700
-Marzo: ingresos 900, gastos 400
-"""
-
-data = {
-    "model": "llama-3.1-8b-instant", 
-    "messages": [
-        {"role": "user", "content": prompt}
-    ]
-}
-
-response = requests.post(API_URL, headers=HEADERS, json=data)
-
-# Primero mostramos toda la respuesta
-print("Respuesta cruda:", response.text)
-
-try:
-    result = response.json()
-    if "choices" in result:
-        print("\nRespuesta del modelo:\n")
-        print(result["choices"][0]["message"]["content"])
-    else:
-        print("Error en la respuesta:", result)
-except Exception as e:
-    print("No se pudo procesar la respuesta:", e)
+def analyze_prompt(prompt: str) -> str:
+    data = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [
+            {"role": "user", "content": prompt}
+        ]
+    }
+    response = requests.post(API_URL, headers=HEADERS, json=data)
+    try:
+        result = response.json()
+        if "choices" in result:
+            return result["choices"][0]["message"]["content"]
+        else:
+            raise RuntimeError(f"Error en la respuesta: {result}")
+    except Exception as e:
+        raise RuntimeError(f"No se pudo procesar la respuesta: {e}")
