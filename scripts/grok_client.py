@@ -45,15 +45,21 @@ def analyze_prompt(prompt: str, context_text: str = None) -> str:
     else:
         full_content = f"INSTRUCTIONS:\n{system_instructions}\n\nUSER QUESTION:\n{prompt}"
 
-    # Instrucciones al sistema para salida JSON estructurada
+    # Instrucciones suaves: permitir un análisis extenso en texto pero exigir
+    # que al final se incluya un bloque JSON valido con la estructura esperada.
+    # Esto evita que el modelo se contenga por cumplir un formato estricto
+    # y al mismo tiempo conserva la estructura machine-readable al final.
     system_json_instruction = (
-        "Responde exclusivamente en formato JSON con las claves: \n"
-        "- resumen: string breve\n"
-        "- tendencias: array de strings\n"
-        "- recomendaciones: array de strings\n"
-        "- missing_fields: array de strings indicando campos/tables faltantes (si aplica)\n"
-        "- note: string con aclaraciones opcionales\n"
-        "Si el contexto no contiene los campos solicitados para el análisis (por ejemplo ventas por cliente en enero 2024), no rehúyas: realiza el mejor análisis posible usando los datos disponibles y en 'missing_fields' lista lo que falta. Devuelve únicamente JSON válido, sin texto adicional."
+        "Proporciona un análisis extenso y detallado usando la información del bloque CONTEXT. "
+        "Primero entrega el análisis en lenguaje natural (múltiples párrafos, listas y ejemplos). "
+        "Al final, incluye un bloque JSON delimitado con ```json ... ``` que contenga el resumen estructurado con las siguientes claves: \n"
+        "- resumen: string con los hallazgos clave\n"
+        "- tendencias: array de strings describiendo insights (añade números o porcentajes cuando sea posible)\n"
+        "- recomendaciones: array de strings con acciones concretas\n"
+        "- analysis_by_category: objeto con claves por categoría y un breve análisis\n"
+        "- missing_fields: array de strings indicando datos faltantes\n"
+        "- note: string con observaciones adicionales\n"
+        "El bloque JSON debe ser válido y parsable; si falta información, Indícalo en 'missing_fields'. No limites la longitud del análisis en texto."
     )
     # Preparar mensajes para la API
     messages = [
