@@ -1,10 +1,6 @@
 
 import os
-import requests
-from dotenv import load_dotenv
-
-# Cargar .env si existe
-import os
+import re
 import json
 import requests
 import logging
@@ -29,7 +25,7 @@ if API_KEY:
     HEADERS["Authorization"] = f"Bearer {API_KEY}"
 
 
-def analyze_prompt(prompt: str, context_text: str = None, max_context_chars: int = 15000) -> str:
+def analyze_prompt(prompt: str, context_text: str = None) -> str:
     """
     Envía el prompt y el contexto OLAP a la API Grok.
     Si no hay API key disponible, devuelve una respuesta mock para pruebas locales.
@@ -38,13 +34,11 @@ def analyze_prompt(prompt: str, context_text: str = None, max_context_chars: int
     # Preparar instrucciones claras para forzar el uso del contexto
     system_instructions = (
         "Usa exclusivamente la información proporcionada en el bloque CONTEXT para responder. "
-        "Si falta información, indica qué datos adicionales se necesitan. Responde en lenguaje claro y con "
-        "puntos concretos (máximo 8 ítems)."
+        "Si falta información, indica qué datos adicionales se necesitan. Responde en lenguaje claro y con puntos concretos."
     )
 
+    # Incluir todo el contexto proporcionado sin truncar
     if context_text:
-        if len(context_text) > max_context_chars:
-            context_text = context_text[:max_context_chars]
         full_content = (
             f"CONTEXT:\n{context_text}\n\nINSTRUCTIONS:\n{system_instructions}\n\nUSER QUESTION:\n{prompt}"
         )
@@ -95,6 +89,42 @@ def analyze_prompt(prompt: str, context_text: str = None, max_context_chars: int
         if "choices" in result and len(result["choices"]) > 0:
             content = result["choices"][0].get("message", {}).get("content") or result["choices"][0].get("text")
             # Intentar parsear JSON
+            # Primero intentamos extraer un bloque JSON del contenido (maneja triple backticks y texto adicional)
+            def _extract_json_from_text(text: str) -> str | None:
+                if not text:
+                    return None
+                # Buscar bloque ```json ... ```
+                m = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL | re.IGNORECASE)
+                if m:
+                    return m.group(1)
+                # Buscar cualquier bloque de triple backticks que contenga JSON
+                m = re.search(r"```(?:.*?)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+                if m:
+                    return m.group(1)
+                # Buscar el primer objeto JSON basado en llaves balanceadas
+                start = text.find('{')
+                if start == -1:
+                    return None
+                stack = 0
+                for i in range(start, len(text)):
+                    ch = text[i]
+                    if ch == '{':
+                        stack += 1
+                    elif ch == '}':
+                        stack -= 1
+                        if stack == 0:
+                            return text[start:i+1]
+                return None
+
+            json_text = _extract_json_from_text(content)
+            if json_text:
+                try:
+                    parsed = json.loads(json_text)
+                    logging.info("Grok parsed JSON response (extracted): %s", parsed)
+                    return parsed
+                except Exception:
+                    logging.exception("Error parseando JSON extraído, intentando parseo directo...")
+            # Fallback: intentar parseo directo del content tal cual
             try:
                 parsed = json.loads(content)
                 logging.info("Grok parsed JSON response: %s", parsed)
