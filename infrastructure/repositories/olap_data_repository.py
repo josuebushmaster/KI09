@@ -30,7 +30,28 @@ class OlapDataRepository:
             "dim_tiempo",
             "dim_envio",
             "dim_categoria",
-            "dim_metodo_pago"  # Cambia 'otra_tabla' por el nombre real de tu séptima tabla
+            "dim_metodo_pago",
+            "vw_kpi_clientes_unicos_mes",
+            "vw_kpi_ventas_categoria",
+            "vw_productos_mejor_margen",
+            "vw_ventas_por_mes",
+            "vw_kpi_margen_promedio_producto",
+            "vw_kpi_top_clientes",
+            "vw_kpi_top_productos",
+            "vw_kpi_ventas_pago_envio",
+            "vw_kpi_ventas_pais_anio",
+            "vw_kpi_ventas_trimestre",
+            "vw_top_clientes",
+            "vw_ventas_trimestre_categoria",
+            "vw_kpi_ventas_mensual",
+            "vw_ventas_producto_mes",
+            "vw_ventas_metodo_envio",
+            "vw_ventas_pais_anio",
+            "vw_kpi_retencion_clientes",
+            "vw_ventas_tiempo_producto",
+            "vw_ventas_cliente",
+            "vw_ventas_metodo_pago_envio"
+            
         ]
         dataframes = {}
         for table in tables:

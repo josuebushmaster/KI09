@@ -52,7 +52,6 @@ class AnalyzeOlapUseCase:
 					tiempo_ids = dim_t[(dim_t['anio'] == year) & (dim_t['mes'] == month)]['id_tiempo'].unique()
 					ventas_mes = hecho[hecho['id_tiempo'].isin(tiempo_ids)]
 					# Construir contexto compacto de ventas de ese mes
-					from application.use_cases.ia_cases.olap_context_formatter import compact_olap_context
 					filtered_ctx = f"--- Ventas filtradas para {month}/{year} ---\n"
 					filtered_ctx += f"Filas: {len(ventas_mes)}\n"
 					filtered_ctx += ventas_mes.head(10).to_string(index=False)
