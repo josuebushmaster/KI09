@@ -35,6 +35,7 @@ def analyze_prompt(prompt: str, context_text: str = None) -> str:
     system_instructions = (
         "Usa exclusivamente la información proporcionada en el bloque CONTEXT para responder. "
         "Si falta información, indica qué datos adicionales se necesitan. Responde en lenguaje claro y con puntos concretos."
+        "No hagas suposiciones fuera del contexto. Si el CONTEXT está vacío, indica que no hay datos disponibles."
     )
 
     # Incluir todo el contexto proporcionado sin truncar
