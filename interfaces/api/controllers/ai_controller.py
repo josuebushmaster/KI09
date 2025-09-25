@@ -22,6 +22,7 @@ logging.basicConfig(
 
 from scripts import grok_client
 from application.use_cases.ia_cases.analyze_olap_use_case import AnalyzeOlapUseCase
+from application.use_cases.ia_cases.ai_response_verifier import verify_ai_response
 
 router = APIRouter(prefix="/ia", tags=["ia"])
 
@@ -61,11 +62,44 @@ async def analyze_prompt(request: PromptRequest):
             logging.info("AI raw response: %s", ai_response)
         except Exception:
             logging.exception("Error logueando respuesta AI")
-        # Si la respuesta es estructura (dict), devolver directamente JSON
+        # Si la respuesta es estructura (dict), verificar heurísticamente contra olap_data
+        re_evaluations = []
         if isinstance(ai_response, dict):
-            return ai_response
-        # En caso contrario, envolver en campo texto
-        return {"respuesta": ai_response, "context_summary": context_text[:1000]}
+            verification = verify_ai_response(ai_response, olap_data)
+
+            # Si no pasa la verificación, pedir re-evaluación automática hasta 2 veces
+            max_retries = 2
+            attempt = 0
+            while not verification.get('verified', False) and attempt < max_retries:
+                attempt += 1
+                try:
+                    follow_up_prompt = (
+                        "Reevalua y corrige TU RESPUESTA PREVIA. "
+                        "Se detectaron los siguientes issues: %s. "
+                        "Usa exclusivamente el bloque CONTEXT enviado. Para cada afirmación numérica, "
+                        "incluye el cálculo exacto (consulta/filtrado o agregación) y referencia a la tabla/columna/filas que la respaldan. "
+                        "Si no puedes verificar una afirmación, indica claramente 'UNVERIFIABLE' para esa afirmación. "
+                        "Responde primero con el análisis textual y al final agrega un bloque JSON con la misma estructura que antes (resumen, tendencias, recomendaciones, analysis_by_category, missing_fields, note)."
+                    ) % (verification.get('issues') or [])
+
+                    logging.info("Re-evaluación intento %d: enviando follow-up a la IA", attempt)
+                    follow_resp = grok_client.analyze_prompt(follow_up_prompt, context_text=context_text)
+                    # Volver a verificar
+                    follow_ver = verify_ai_response(follow_resp if isinstance(follow_resp, dict) else {}, olap_data)
+                    re_evaluations.append({"attempt": attempt, "ai_response": follow_resp, "verification": follow_ver})
+                    # Si la re-evaluación pasó, reemplazar ai_response/verification por la versión verificada
+                    if follow_ver.get('verified'):
+                        ai_response = follow_resp
+                        verification = follow_ver
+                        break
+                except Exception as e:
+                    logging.exception("Error durante re-evaluación automática: %s", e)
+                    re_evaluations.append({"attempt": attempt, "error": str(e)})
+
+            return {"ai_response": ai_response, "verification": verification, "re_evaluations": re_evaluations}
+
+        # En caso contrario, envolver en campo texto y marcar como no verificado
+        return {"respuesta": ai_response, "verification": {"verified": False, "issues": ["response_not_structured"]}, "context_summary": context_text[:1000]}
     except Exception as e:
         logging.error(f"Error en análisis OLAP: {e}")
         raise HTTPException(status_code=500, detail=str(e))
