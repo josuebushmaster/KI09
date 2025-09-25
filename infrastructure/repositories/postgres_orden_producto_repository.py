@@ -10,7 +10,7 @@ class PostgresOrdenProductoRepository(OrdenProductoRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            query = 'SELECT * FROM orden_producto ORDER BY "id_ordenProd";'
+            query = 'SELECT * FROM orden_producto WHERE (eliminado IS NULL OR eliminado = FALSE) ORDER BY "id_ordenProd";'
             cursor.execute(query)
             rows = cursor.fetchall()
             desc = [d[0] for d in cursor.description]
@@ -41,7 +41,7 @@ class PostgresOrdenProductoRepository(OrdenProductoRepository):
             query = """
                 INSERT INTO orden_producto (id_producto, cantidad, precio_unitario, id_orden)
                 VALUES (%s, %s, %s, %s)
-                RETURNING "id_ordenProd", id_producto, cantidad, precio_unitario, id_orden;
+                RETURNING "id_ordenProd" AS id_ordenprod, id_producto, cantidad, precio_unitario, id_orden;
             """
             cursor.execute(query, (
                 orden_producto.id_producto,
@@ -79,7 +79,7 @@ class PostgresOrdenProductoRepository(OrdenProductoRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            query = 'SELECT * FROM orden_producto WHERE "id_ordenProd" = %s;'
+            query = 'SELECT * FROM orden_producto WHERE "id_ordenProd" = %s AND (eliminado IS NULL OR eliminado = FALSE);'
             cursor.execute(query, (id_ordenProd,))
             row = cursor.fetchone()
             if not row:
@@ -107,7 +107,7 @@ class PostgresOrdenProductoRepository(OrdenProductoRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            query = 'SELECT * FROM orden_producto WHERE id_orden = %s ORDER BY "id_ordenProd";'
+            query = 'SELECT * FROM orden_producto WHERE id_orden = %s AND (eliminado IS NULL OR eliminado = FALSE) ORDER BY "id_ordenProd";'
             cursor.execute(query, (id_orden,))
             rows = cursor.fetchall()
             desc = [d[0] for d in cursor.description]
