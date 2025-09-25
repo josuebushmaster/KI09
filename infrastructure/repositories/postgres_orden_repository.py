@@ -74,7 +74,7 @@ class PostgresOrdenRepository(OrdenRepository):
             conn = get_db_connection()
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-            query = "SELECT * FROM orden WHERE id_orden = %s;"
+            query = "SELECT * FROM orden WHERE id_orden = %s AND (eliminado IS NULL OR eliminado = FALSE);"
             cursor.execute(query, (id_orden,))
 
             result = cursor.fetchone()
@@ -108,7 +108,7 @@ class PostgresOrdenRepository(OrdenRepository):
             conn = get_db_connection()
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-            query = "SELECT * FROM orden ORDER BY id_orden;"
+            query = "SELECT * FROM orden WHERE (eliminado IS NULL OR eliminado = FALSE) ORDER BY id_orden;"
             cursor.execute(query)
 
             results = cursor.fetchall()
@@ -141,7 +141,7 @@ class PostgresOrdenRepository(OrdenRepository):
             conn = get_db_connection()
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-            query = "SELECT * FROM orden WHERE id_cliente = %s ORDER BY fecha_orden DESC;"
+            query = "SELECT * FROM orden WHERE id_cliente = %s AND (eliminado IS NULL OR eliminado = FALSE) ORDER BY fecha_orden DESC;"
             cursor.execute(query, (id_cliente,))
 
             results = cursor.fetchall()
@@ -174,7 +174,7 @@ class PostgresOrdenRepository(OrdenRepository):
             conn = get_db_connection()
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-            query = "SELECT * FROM orden WHERE fecha_orden BETWEEN %s AND %s ORDER BY fecha_orden DESC;"
+            query = "SELECT * FROM orden WHERE fecha_orden BETWEEN %s AND %s AND (eliminado IS NULL OR eliminado = FALSE) ORDER BY fecha_orden DESC;"
             cursor.execute(query, (fecha_inicio, fecha_fin))
 
             results = cursor.fetchall()
@@ -280,12 +280,13 @@ class PostgresOrdenRepository(OrdenRepository):
 
     def eliminar(self, id_orden: int) -> bool:
         conn = None
+        cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            # Borrado lógico: estado_orden = 3 (cancelada)
-            query = "UPDATE orden SET estado_orden = %s WHERE id_orden = %s;"
+            # Borrado lógico: marcar eliminado y cancelar la orden para preservar historial
+            query = "UPDATE orden SET eliminado = TRUE, estado_orden = %s WHERE id_orden = %s;"
             cursor.execute(query, (3, id_orden))
 
             conn.commit()
@@ -296,5 +297,13 @@ class PostgresOrdenRepository(OrdenRepository):
                 conn.rollback()
             raise e
         finally:
+            if cursor:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
             if conn:
-                conn.close()
+                try:
+                    conn.close()
+                except Exception:
+                    pass

@@ -156,17 +156,24 @@ class PostgresClienteRepository(ClienteRepository):
             conn = get_db_connection()
             cursor = conn.cursor()
 
+            # Verificar si existen órdenes relacionadas (para diagnóstico / futura lógica si se necesita)
+            cursor.execute("SELECT 1 FROM orden WHERE id_cliente = %s LIMIT 1;", (id_cliente,))
+            tiene_ordenes = cursor.fetchone() is not None
+
+            # Siempre realizar borrado lógico para evitar violaciones de FK y preservar historial de órdenes
             query = "UPDATE clientes SET eliminado = TRUE WHERE id_cliente = %s;"
             cursor.execute(query, (id_cliente,))
 
             conn.commit()
             actualizado = cursor.rowcount > 0
 
+            # Si no se actualizó ninguna fila, el cliente no existe
             return actualizado
 
         except Exception as e:
             if conn:
                 conn.rollback()
+            # Si por alguna razón se intentó un DELETE físico en otra parte y falló, devolver error explicativo
             raise e
         finally:
             if cursor:

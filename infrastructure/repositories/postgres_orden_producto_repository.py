@@ -175,18 +175,29 @@ class PostgresOrdenProductoRepository(OrdenProductoRepository):
 
     def eliminar(self, id_ordenProd: int) -> bool:
         conn = None
+        cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            query = 'DELETE FROM orden_producto WHERE "id_ordenProd" = %s;'
+
+            # Borrado lógico: marcar como eliminado para no romper integridad referencial y preservar historial
+            query = 'UPDATE orden_producto SET eliminado = TRUE WHERE "id_ordenProd" = %s;'
             cursor.execute(query, (id_ordenProd,))
-            deleted = cursor.rowcount > 0
+            actualizado = cursor.rowcount > 0
             conn.commit()
-            return deleted
+            return actualizado
         except Exception as e:
             if conn:
                 conn.rollback()
             raise e
         finally:
+            if cursor:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
             if conn:
-                conn.close()
+                try:
+                    conn.close()
+                except Exception:
+                    pass
