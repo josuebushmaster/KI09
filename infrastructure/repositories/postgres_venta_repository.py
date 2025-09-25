@@ -42,7 +42,7 @@ class PostgresVentaRepository(VentaRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            query = "SELECT * FROM ventas WHERE id_venta = %s;"
+            query = "SELECT * FROM ventas WHERE id_venta = %s AND (eliminado IS NULL OR eliminado = FALSE);"
             cursor.execute(query, (id_venta,))
             result = cursor.fetchone()
             if not result:
@@ -65,7 +65,7 @@ class PostgresVentaRepository(VentaRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            query = "SELECT * FROM ventas ORDER BY id_venta;"
+            query = "SELECT * FROM ventas WHERE (eliminado IS NULL OR eliminado = FALSE) ORDER BY id_venta;"
             cursor.execute(query)
             results = cursor.fetchall()
             return [
@@ -91,14 +91,26 @@ class PostgresVentaRepository(VentaRepository):
             query = """
                 UPDATE ventas
                 SET id_orden = %s, fecha_venta = %s, total_venta = %s, metodo_pago = %s
-                WHERE id_venta = %s
+                WHERE id_venta = %s AND (eliminado IS NULL OR eliminado = FALSE)
                 RETURNING *;
             """
+            # aceptar tanto objeto Venta como dict con las mismas keys
+            if isinstance(venta, dict):
+                id_orden_val = venta.get('id_orden')
+                fecha_venta_val = venta.get('fecha_venta')
+                total_venta_val = venta.get('total_venta')
+                metodo_pago_val = venta.get('metodo_pago')
+            else:
+                id_orden_val = venta.id_orden
+                fecha_venta_val = venta.fecha_venta
+                total_venta_val = venta.total_venta
+                metodo_pago_val = venta.metodo_pago
+
             cursor.execute(query, (
-                venta.id_orden,
-                venta.fecha_venta,
-                venta.total_venta,
-                venta.metodo_pago,
+                id_orden_val,
+                fecha_venta_val,
+                total_venta_val,
+                metodo_pago_val,
                 id_venta
             ))
             result = cursor.fetchone()
@@ -125,7 +137,8 @@ class PostgresVentaRepository(VentaRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            query = "DELETE FROM ventas WHERE id_venta = %s;"
+            # Soft delete: marcar como eliminado para preservar histórico
+            query = "UPDATE ventas SET eliminado = TRUE WHERE id_venta = %s;"
             cursor.execute(query, (id_venta,))
             conn.commit()
             return cursor.rowcount > 0
