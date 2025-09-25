@@ -53,8 +53,7 @@ class PostgresClienteRepository(ClienteRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
-            query = "SELECT * FROM clientes WHERE id_cliente = %s;"
+            query = "SELECT * FROM clientes WHERE id_cliente = %s AND (eliminado IS NULL OR eliminado = FALSE);"
             cursor.execute(query, (id_cliente,))
 
             result = cursor.fetchone()
@@ -82,8 +81,7 @@ class PostgresClienteRepository(ClienteRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
-            query = "SELECT * FROM clientes ORDER BY id_cliente;"
+            query = "SELECT * FROM clientes WHERE (eliminado IS NULL OR eliminado = FALSE) ORDER BY id_cliente;"
             cursor.execute(query)
 
             results = cursor.fetchall()
@@ -153,20 +151,31 @@ class PostgresClienteRepository(ClienteRepository):
 
     def eliminar(self, id_cliente: int) -> bool:
         conn = None
+        cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            query = "DELETE FROM clientes WHERE id_cliente = %s;"
+            query = "UPDATE clientes SET eliminado = TRUE WHERE id_cliente = %s;"
             cursor.execute(query, (id_cliente,))
 
             conn.commit()
-            return cursor.rowcount > 0
+            actualizado = cursor.rowcount > 0
+
+            return actualizado
 
         except Exception as e:
             if conn:
                 conn.rollback()
             raise e
         finally:
+            if cursor:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
             if conn:
-                conn.close()
+                try:
+                    conn.close()
+                except Exception:
+                    pass

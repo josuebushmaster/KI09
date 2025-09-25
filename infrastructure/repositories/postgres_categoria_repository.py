@@ -40,7 +40,7 @@ class PostgresCategoriaRepository(CategoriaRepository):
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            query = "SELECT * FROM categoria WHERE id_categoria = %s;"
+            query = "SELECT * FROM categoria WHERE id_categoria = %s AND (eliminado IS NULL OR eliminado = FALSE);"
             cursor.execute(query, (id_categoria,))
             
             result = cursor.fetchone()
@@ -65,7 +65,7 @@ class PostgresCategoriaRepository(CategoriaRepository):
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            query = "SELECT * FROM categoria ORDER BY id_categoria;"
+            query = "SELECT * FROM categoria WHERE (eliminado IS NULL OR eliminado = FALSE) ORDER BY id_categoria;"
             cursor.execute(query)
             
             results = cursor.fetchall()
@@ -123,20 +123,31 @@ class PostgresCategoriaRepository(CategoriaRepository):
 
     def eliminar(self, id_categoria: int) -> bool:
         conn = None
+        cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
-            query = "DELETE FROM categoria WHERE id_categoria = %s;"
+
+            query = "UPDATE categoria SET eliminado = TRUE WHERE id_categoria = %s;"
             cursor.execute(query, (id_categoria,))
-            
+
             conn.commit()
-            return cursor.rowcount > 0
-            
+            actualizado = cursor.rowcount > 0
+
+            return actualizado
+
         except Exception as e:
             if conn:
                 conn.rollback()
             raise e
         finally:
+            if cursor:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
             if conn:
-                conn.close()
+                try:
+                    conn.close()
+                except Exception:
+                    pass
