@@ -48,7 +48,7 @@ class PostgresProductoRepository(ProductoRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            query = "SELECT * FROM productos WHERE id_producto = %s;"
+            query = "SELECT * FROM productos WHERE id_producto = %s AND (eliminado IS NULL OR eliminado = FALSE);"
             cursor.execute(query, (id_producto,))
             result = cursor.fetchone()
             if not result:
@@ -74,7 +74,7 @@ class PostgresProductoRepository(ProductoRepository):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            query = "SELECT * FROM productos ORDER BY id_producto;"
+            query = "SELECT * FROM productos WHERE (eliminado IS NULL OR eliminado = FALSE) ORDER BY id_producto;"
             cursor.execute(query)
             results = cursor.fetchall()
             return [
@@ -140,20 +140,40 @@ class PostgresProductoRepository(ProductoRepository):
 
     def eliminar(self, id_producto: int) -> bool:
         conn = None
+        cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
-            query = "DELETE FROM productos WHERE id_producto = %s;"
+
+            # Verificar si existen referencias en orden_producto (para diagnóstico / futura lógica)
+            cursor.execute("SELECT 1 FROM orden_producto WHERE id_producto = %s LIMIT 1;", (id_producto,))
+            tiene_refs = cursor.fetchone() is not None
+
+            # Si hay referencias en orden_producto, marcarlas como eliminadas (borrado lógico en cascada)
+            if tiene_refs:
+                cursor.execute("UPDATE orden_producto SET eliminado = TRUE WHERE id_producto = %s;", (id_producto,))
+
+            # Borrado lógico: marcar producto como eliminado para evitar violaciones de FK y preservar historial
+            query = "UPDATE productos SET eliminado = TRUE WHERE id_producto = %s;"
             cursor.execute(query, (id_producto,))
-            
+
             conn.commit()
-            return cursor.rowcount > 0
-            
+            actualizado = cursor.rowcount > 0
+
+            return actualizado
+
         except Exception as e:
             if conn:
                 conn.rollback()
             raise e
         finally:
+            if cursor:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
             if conn:
-                conn.close()
+                try:
+                    conn.close()
+                except Exception:
+                    pass
