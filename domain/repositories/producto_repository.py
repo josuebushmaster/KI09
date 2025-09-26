@@ -22,3 +22,11 @@ class ProductoRepository(ABC):
     @abstractmethod
     def eliminar(self, id_producto: int) -> bool:
         pass
+
+    def disminuir_stock(self, id_producto: int, cantidad: int, conn=None) -> bool:
+        """Disminuye el stock del producto en la cantidad especificada.
+        Si se proporciona `conn`, usa esa conexión (no hace commit/rollback);
+        si no, abrirá su propia conexión y la manejará.
+        Retorna True si se actualizó el stock (suficiente stock), False si no.
+        """
+        raise NotImplementedError()

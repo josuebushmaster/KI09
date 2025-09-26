@@ -4,10 +4,16 @@ from infrastructure.database.postgres_connection import get_db_connection
 from typing import List, Optional
 
 class PostgresVentaRepository(VentaRepository):
-    def crear(self, venta: Venta) -> Venta:
-        conn = None
+    def crear(self, venta: Venta, conn=None) -> Venta:
+        """Crea una venta. Si se pasa `conn`, usa esa conexión (no hace commit/close);
+        de lo contrario maneja su propia conexión.
+        """
+        own_conn = False
+        cursor = None
         try:
-            conn = get_db_connection()
+            if conn is None:
+                conn = get_db_connection()
+                own_conn = True
             cursor = conn.cursor()
             query = """
                 INSERT INTO ventas (id_orden, fecha_venta, total_venta, metodo_pago)
@@ -21,7 +27,8 @@ class PostgresVentaRepository(VentaRepository):
                 venta.metodo_pago
             ))
             result = cursor.fetchone()
-            conn.commit()
+            if own_conn:
+                conn.commit()
             return Venta(
                 id_venta=result['id_venta'],
                 id_orden=result['id_orden'],
@@ -30,12 +37,20 @@ class PostgresVentaRepository(VentaRepository):
                 metodo_pago=result['metodo_pago']
             )
         except Exception as e:
-            if conn:
+            if own_conn and conn:
                 conn.rollback()
             raise e
         finally:
-            if conn:
-                conn.close()
+            if cursor:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+            if own_conn and conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def obtener_por_id(self, id_venta: int) -> Optional[Venta]:
         conn = None

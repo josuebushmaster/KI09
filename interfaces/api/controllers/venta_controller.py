@@ -9,17 +9,21 @@ from application.use_cases.venta_cases.listar_ventas import ListarVentasUseCase
 from application.use_cases.venta_cases.actualizar_venta import ActualizarVentaUseCase
 from application.use_cases.venta_cases.eliminar_venta import EliminarVentaUseCase
 from infrastructure.repositories.postgres_venta_repository import PostgresVentaRepository
+from infrastructure.repositories.postgres_orden_producto_repository import PostgresOrdenProductoRepository
+from infrastructure.repositories.postgres_producto_repository import PostgresProductoRepository
 from interfaces.api.dtos.venta_dto import VentaCreateDTO, VentaUpdateDTO, VentaResponseDTO
 
 router = APIRouter(prefix="/ventas", tags=["ventas"])
 
 # Inyección de dependencias
 venta_repository = PostgresVentaRepository()
+orden_producto_repository = PostgresOrdenProductoRepository()
+producto_repository = PostgresProductoRepository()
 
 @router.post("/", response_model=VentaResponseDTO, status_code=status.HTTP_201_CREATED)
 async def crear_venta(venta_dto: VentaCreateDTO):
     try:
-        use_case = CrearVentaUseCase(venta_repository)
+        use_case = CrearVentaUseCase(venta_repository, orden_producto_repository, producto_repository)
         venta = use_case.execute(
             venta_dto.id_orden,
             venta_dto.fecha_venta,

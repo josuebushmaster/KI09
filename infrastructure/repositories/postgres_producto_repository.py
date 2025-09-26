@@ -177,3 +177,40 @@ class PostgresProductoRepository(ProductoRepository):
                     conn.close()
                 except Exception:
                     pass
+
+    def disminuir_stock(self, id_producto: int, cantidad: int, conn=None) -> bool:
+        """Disminuye el stock de un producto. Si se pasa `conn`, usa esa conexión (no commit/rollback);
+        de lo contrario abre una nueva conexión.
+        Retorna True si se aplicó la disminución (stock suficiente), False si no.
+        """
+        own_conn = False
+        cursor = None
+        try:
+            if conn is None:
+                conn = get_db_connection()
+                own_conn = True
+            cursor = conn.cursor()
+            query = """
+                UPDATE productos
+                SET stock = stock - %s
+                WHERE id_producto = %s AND (eliminado IS NULL OR eliminado = FALSE) AND stock >= %s
+            """
+            cursor.execute(query, (cantidad, id_producto, cantidad))
+            if own_conn:
+                conn.commit()
+            return cursor.rowcount > 0
+        except Exception:
+            if own_conn and conn:
+                conn.rollback()
+            raise
+        finally:
+            if cursor:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+            if own_conn and conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
