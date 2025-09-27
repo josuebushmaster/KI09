@@ -26,50 +26,51 @@ class OlapDataRepository:
 
     def get_all_olap_data(self) -> dict:
         """
-        Extrae información de las tablas/vistas OLAP configuradas y retorna un dict: nombre -> DataFrame o 'Error: <msg>'.
-        Lista de tablas configurable vía OLAP_TABLES (separadas por coma). Si no se define, usa una lista por defecto.
+        Extrae SOLO información de las tablas/vistas del esquema 'public' (de negocio).
+        Ignora metadatos y tablas del sistema.
         """
-        # Permitir configurar las tablas/vistas vía variable de entorno OLAP_TABLES
-        env_tables = os.getenv('OLAP_TABLES')
-        if env_tables:
-            tables = [t.strip() for t in env_tables.split(',') if t.strip()]
-        else:
-            tables = [
-                "hecho_ventas",
-                "dim_cliente",
-                "dim_producto",
-                "dim_tiempo",
-                "dim_envio",
-                "dim_categoria",
-                "dim_metodo_pago",
-                # Vistas opcionales (si existen en tu OLAP)
-                "vw_kpi_clientes_unicos_mes",
-                "vw_kpi_ventas_categoria",
-                "vw_productos_mejor_margen",
-                "vw_ventas_por_mes",
-                "vw_kpi_margen_promedio_producto",
-                "vw_kpi_top_clientes",
-                "vw_kpi_top_productos",
-                "vw_kpi_ventas_pago_envio",
-                "vw_kpi_ventas_pais_anio",
-                "vw_kpi_ventas_trimestre",
-                "vw_top_clientes",
-                "vw_ventas_trimestre_categoria",
-                "vw_kpi_ventas_mensual",
-                "vw_ventas_producto_mes",
-                "vw_ventas_metodo_envio",
-                "vw_ventas_pais_anio",
-                "vw_kpi_retencion_clientes",
-                "vw_ventas_tiempo_producto",
-                "vw_ventas_cliente",
-                "vw_ventas_metodo_pago_envio"
-            ]
+        print("📊 INICIANDO EXTRACCIÓN DE OLAP DEL ESQUEMA 'public'...")
+
+        # Obtener lista de tablas y vistas del esquema 'public'
+        schema_query = """
+        SELECT table_name, table_type
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        ORDER BY table_type, table_name;
+        """
+
+        try:
+            with psycopg2.connect(self.conn_str) as conn:
+                schema_df = pd.read_sql_query(schema_query, conn)
+        except Exception as e:
+            return {'error': f"Error al obtener esquema: {e}"}
+
+        tables = schema_df['table_name'].tolist()
+        print(f"📊 Tablas/vistas encontradas en 'public': {tables}")
+
         dataframes = {}
+        successful_extractions = 0
+        total_rows_extracted = 0
+
         for table in tables:
             try:
-                dataframes[table] = self.get_table_df(table)
+                df = self.get_table_df(f"public.{table}")
+                dataframes[table] = df
+                if isinstance(df, pd.DataFrame) and len(df) > 0:
+                    successful_extractions += 1
+                    total_rows_extracted += len(df)
+                    print(f"✅ {table}: {len(df)} filas, {len(df.columns)} cols")
+                else:
+                    print(f"⚠️  {table}: vacío")
             except Exception as e:
-                dataframes[table] = f"Error: {e}"
+                error_msg = f"Error: {e}"
+                dataframes[table] = error_msg
+                print(f"❌ {table}: {error_msg}")
+
+        print(f"📊 EXTRACCIÓN COMPLETADA:")
+        print(f"✅ Tablas exitosas: {successful_extractions}/{len(tables)}")
+        print(f"📈 Total filas extraídas: {total_rows_extracted:,}")
+
         return dataframes
 
     @staticmethod
