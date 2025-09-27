@@ -1,78 +1,126 @@
-from infrastructure.repositories.olap_data_repository import OlapDataRepository
-from application.use_cases.ia_cases.olap_context_formatter import format_olap_context, compact_olap_context
+import logging
 import re
+from typing import Dict, List, Optional, Tuple
+
+import pandas as pd
+
+from application.use_cases.ia_cases.olap_context_formatter import compact_olap_context, format_olap_context
+from infrastructure.repositories.olap_data_repository import OlapDataRepository
+
+
+logger = logging.getLogger(__name__)
 
 
 class AnalyzeOlapUseCase:
-	def __init__(self):
+	REQUIRED_TABLES = ("hecho_ventas", "dim_tiempo")
+
+	def __init__(self) -> None:
 		self.repo = OlapDataRepository()
 
-	def _extract_month_year(self, prompt: str):
-		# Buscar patrones como "enero 2024" o "enero de 2024"
-		m = re.search(r"(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(de\s+)?(20\d{2})", prompt, re.IGNORECASE)
-		if not m:
+	def _extract_month_year(self, prompt: str) -> Tuple[Optional[int], Optional[int]]:
+		pattern = (
+			r"(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+"
+			r"(de\s+)?(20\d{2})"
+		)
+		match = re.search(pattern, prompt, re.IGNORECASE)
+		if not match:
 			return None, None
-		month_name = m.group(1).lower()
-		year = int(m.group(3))
+
+		month_name = match.group(1).lower()
+		year = int(match.group(3))
 		month_map = {
-			'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
-			'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+			"enero": 1,
+			"febrero": 2,
+			"marzo": 3,
+			"abril": 4,
+			"mayo": 5,
+			"junio": 6,
+			"julio": 7,
+			"agosto": 8,
+			"septiembre": 9,
+			"octubre": 10,
+			"noviembre": 11,
+			"diciembre": 12,
 		}
 		return month_map.get(month_name), year
 
-	def run(self, prompt: str) -> dict:
-		"""
-		Extrae datos OLAP, construye contexto y si el prompt solicita un mes específico,
-		filtra las ventas para ese mes y devuelve contexto específico. Si faltan datos,
-		retorna información sobre qué falta en el campo `missing`.
-		"""
+	def run(self, prompt: str) -> Dict[str, object]:
+		"""Construye contexto OLAP y responde ante solicitudes temporales específicas."""
+
 		olap_data = self.repo.get_all_olap_data()
+		missing = self._detect_missing_tables(olap_data, self.REQUIRED_TABLES)
 
-		# Intentar extraer mes y año del prompt
 		month, year = self._extract_month_year(prompt)
+		filtered_ctx, extra_missing = self._build_filtered_context(olap_data, month, year)
+		missing.extend(extra_missing)
 
-		missing = []
-		filtered_ctx = ''
-
-		# Si se solicitó un mes, tratar de filtrar usando tablas comunes
-		if month and year:
-			# Verificar que exista la tabla de hechos y la dimensión tiempo
-			hecho = olap_data.get('hecho_ventas')
-			dim_t = olap_data.get('dim_tiempo')
-			if hecho is None:
-				missing.append('hecho_ventas')
-			if dim_t is None:
-				missing.append('dim_tiempo')
-
-			if not missing:
-				try:
-					# Suponer que dim_tiempo tiene columnas 'id_tiempo', 'anio', 'mes'
-					# y que hecho_ventas tiene 'id_tiempo' como FK
-					# Filtrar dim_tiempo para obtener ids del mes/año
-					tiempo_ids = dim_t[(dim_t['anio'] == year) & (dim_t['mes'] == month)]['id_tiempo'].unique()
-					ventas_mes = hecho[hecho['id_tiempo'].isin(tiempo_ids)]
-					# Construir contexto compacto de ventas de ese mes
-					filtered_ctx = f"--- Ventas filtradas para {month}/{year} ---\n"
-					filtered_ctx += f"Filas: {len(ventas_mes)}\n"
-					filtered_ctx += ventas_mes.head(10).to_string(index=False)
-				except Exception as e:
-					missing.append(f'error_filtrado:{e}')
-
-		# Generar contexto completo o compacto según tamaño
-		full_ctx = format_olap_context(olap_data)
-		if len(full_ctx) > 10000:
-			context_text = compact_olap_context(olap_data)
+		full_context = format_olap_context(olap_data)
+		if len(full_context) > 12000:
+			context_text = compact_olap_context(olap_data, max_tables=8, rows_per_table=4)
 		else:
-			context_text = full_ctx
+			context_text = full_context
 
-		# Si tenemos filtered_ctx, prefijarlo al context_text para priorizarlo
 		if filtered_ctx:
-			context_text = filtered_ctx + '\n' + context_text
+			context_text = f"{filtered_ctx}\n{context_text}"
 
-		result = {
-			'context_text': context_text,
-			'olap_data': olap_data,
-			'prompt': prompt,
-			'missing': missing
+		return {
+			"context_text": context_text,
+			"olap_data": olap_data,
+			"prompt": prompt,
+			"missing": missing,
 		}
-		return result
+
+	def _detect_missing_tables(self, olap_data: Dict[str, object], required: Tuple[str, ...]) -> List[str]:
+		missing: List[str] = []
+		for table in required:
+			df = olap_data.get(table)
+			if not isinstance(df, pd.DataFrame):
+				missing.append(table)
+		return missing
+
+	def _build_filtered_context(
+		self,
+		olap_data: Dict[str, object],
+		month: Optional[int],
+		year: Optional[int],
+	) -> Tuple[str, List[str]]:
+		if not month or not year:
+			return "", []
+
+		hecho = olap_data.get("hecho_ventas")
+		dim_tiempo = olap_data.get("dim_tiempo")
+		missing: List[str] = []
+
+		if not isinstance(hecho, pd.DataFrame):
+			missing.append("hecho_ventas")
+		if not isinstance(dim_tiempo, pd.DataFrame):
+			missing.append("dim_tiempo")
+
+		if missing:
+			return "", missing
+
+		try:
+			tiempo_ids = dim_tiempo[
+				(dim_tiempo["anio"].astype(int) == year) & (dim_tiempo["mes"].astype(int) == month)
+			]["id_tiempo"].unique()
+
+			ventas_mes = hecho[hecho["id_tiempo"].isin(tiempo_ids)]
+			if ventas_mes.empty:
+				return (
+					f"--- Ventas filtradas para {month}/{year} ---\nNo se encontraron registros para ese periodo.",
+					[],
+				)
+
+			preview = ventas_mes.head(20).to_string(index=False)
+			context = (
+				f"--- Ventas filtradas para {month}/{year} ---\n"
+				f"Filas: {len(ventas_mes)}\n"
+				f"Vista previa (hasta 20 filas):\n{preview}"
+			)
+			return context, []
+		except KeyError as exc:
+			logger.warning("No se pudieron filtrar ventas por falta de columnas: %s", exc)
+			return "", [f"column_missing:{exc}"]
+		except Exception as exc:  # pylint: disable=broad-except
+			logger.exception("Error filtrando ventas por periodo", exc_info=exc)
+			return "", [f"error_filtrado:{exc}"]
